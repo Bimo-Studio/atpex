@@ -1,0 +1,48 @@
+# Path: .gitlab-ci.yml
+stages:
+  - test
+
+variables:
+  MIX_ENV: "test"
+  GIT_SUBMODULE_STRATEGY: recursive
+  CI: "true"
+
+default:
+  image: elixir:1.14
+  before_script:
+    - apt-get update -y
+    - apt-get install -y --no-install-recommends curl ca-certificates
+    - mix local.hex --force
+    - mix local.rebar --force
+
+cache:
+  key: "${CI_PROJECT_ID}-${CI_COMMIT_REF_SLUG}"
+  paths:
+    - _build/
+    - deps/
+
+test:unit:
+  stage: test
+  script:
+    - chmod +x ci/run_ci.sh
+    - ./ci/run_ci.sh
+  artifacts:
+    when: always
+    reports:
+      junit: test-results/*.xml
+    paths:
+      - test-results/
+      - _build/test/log
+    expire_in: 1 week
+  interruptible: true
+
+integration:
+  stage: test
+  script:
+    - chmod +x ci/run_ci.sh
+    - INTEGRATION_TEST=true ./ci/run_ci.sh
+  when: manual
+  only:
+    - main
+  allow_failure: false
+
